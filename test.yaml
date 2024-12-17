@@ -1,0 +1,656 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Description:
+  en: This template defines the parameters for creating a user service repository.
+  zh-cn: 该模板定义快速创建用户服务仓库的参数。
+Parameters:
+  # 服务构建地域
+  ServiceBuildRegion:
+    Type: String
+    Default: ap-southeast-1
+    Label:
+      en: Service build region
+      zh-cn: 服务构建地域
+    Description:
+      en: Service build region. Due to network issues, some Docker images may not pull in the default region (Singapore). Keep the region as Singapore if Docker images are involved.
+      zh-cn: 因网络问题，部分 Docker 镜像可能无法在国内拉取。若涉及 Docker 镜像，请保持地域为ap-southeast-1（新加坡）。
+    AllowedValues:
+      - ap-southeast-1
+      - cn-hangzhou
+  ArtifactSourceType:
+    Type: String
+    Default: DockerCompose
+    Label:
+      en: artifact source type
+      zh-cn: 软件部署物类型
+    AllowedValues:
+      - 'DockerCompose'
+      - 'Dockerfile'
+      - 'SourceCode'
+      - 'HelmChart'
+      # - 'InstallPackage'
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        DockerCompose: "Docker Compose"
+        Dockerfile: "Dockerfile"
+        SourceCode: "源代码"
+        HelmChart: "Helm Chart"
+        # InstallPackage: "安装包"
+  SourceCodePath:
+    Type: String
+    Label:
+      en: Source Code Root Path
+      zh-cn: 根目录
+    Description:
+      en: Specify the root directory of the source code, which should be the relative path based on the source repository. Compute Nest will scan for Compute Nest service configuration information in the root directory and package it.
+      zh-cn: 指定源代码根目录，根目录应当为基于源仓库的相对路径。计算巢将扫描根目录下的计算巢服务配置信息并打包。
+    Default: '.'
+    AssociationProperty: ALIYUN::OOS::GitContent::Content
+    AssociationPropertyMetadata:
+      Platform: '{{ Platform }}'
+      Owner: '{{ Owner }}'
+      OrgId: '{{ OrgId }}'
+      RepoFullName: '{{ RepoFullName }}'
+      RepoId: '{{ RepoId }}'
+      Branch: '{{ Branch }}'
+      Path: '{{ Path }}'
+      ContentType: dir
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - SourceCode
+  DockerFilePath:
+    Type: String
+    Label:
+      en: Dockerfile Path
+      zh-cn: Dockerfile 路径
+    Description:
+      en: The path of the repository where the Dockerfile is located.
+      zh-cn: 指定 Dockerfile 路径，路径应当为基于源仓库的相对路径。
+    Default: 'Dockerfile'
+    AssociationProperty: ALIYUN::OOS::GitContent::Content
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - Dockerfile
+  PackagePath:
+    Type: String
+    Label:
+      en: Install Package Path
+      zh-cn: 安装包路径
+    Description:
+      en: The path of the repository where the installation package is located.
+      zh-cn: 指定安装包路径，路径应当为基于源仓库的相对路径。
+    Default: '.'
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - InstallPackage
+  DockerComposeYamlPath:
+    Type: String
+    Label:
+      en: Docker Compose Yaml Path
+      zh-cn: Docker Compose Yaml 路径
+    Description:
+      en: The path of the repository where the Docker Compose Yaml is located.
+      zh-cn: 指定 Docker Compose Yaml 路径，路径应当为基于源仓库的相对路径。
+    Default: 'docker-compose.yaml'
+    AssociationProperty: ALIYUN::OOS::GitContent::Content
+    AssociationPropertyMetadata:
+      Platform: '{{ Platform }}'
+      Owner: '{{ Owner }}'
+      OrgId: '{{ OrgId }}'
+      RepoFullName: '{{ RepoFullName }}'
+      RepoId: '{{ RepoId }}'
+      Branch: '{{ Branch }}'
+      Path: '{{ Path }}'
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - DockerCompose
+  DockerComposeEnvPath:
+    Type: String
+    Label:
+      en: Docker Compose Env Path
+      zh-cn: Docker Compose Env 路径
+    Description:
+      en: The path of the repository where the Docker Compose Env is located.
+      zh-cn: 指定 Docker Compose Env 路径，路径应当为基于源仓库的相对路径。
+    Default: '.env'
+    AssociationProperty: ALIYUN::OOS::GitContent::Content
+    AssociationPropertyMetadata:
+      Platform: '{{ Platform }}'
+      Owner: '{{ Owner }}'
+      OrgId: '{{ OrgId }}'
+      RepoFullName: '{{ RepoFullName }}'
+      RepoId: '{{ RepoId }}'
+      Branch: '{{ Branch }}'
+      Path: '{{ Path }}'
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - DockerCompose
+  # 选择基础镜像
+  ImageId:
+    Type: 'ALIYUN::OOS::Parameter::Value'
+    Label:
+      en: Base Image
+      zh-cn: 基础镜像
+    Default: '"{{resolve:oos:aliyun/services/ecs/images/linux/centos-latest/centos_7_9_x64}}"'
+    Description:
+      en: The base image of the software.
+      zh-cn: 软件的基础镜像。
+    AllowedValues:
+      - '"{{resolve:oos:aliyun/services/ecs/images/linux/centos-latest/centos_7_9_x64}}"'
+      - '"{{resolve:oos:aliyun/services/ecs/images/linux/ubuntu-latest/ubuntu_22_04_x64}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_docker_26}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_python_2_7}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_python_3_11}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_java_21}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_java_17}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_go_1_22}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_php_7_2}}"'
+      - '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_nodejs_20}}"'
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - '${ArtifactSourceType}'
+            - SourceCode
+      ValueLabelMapping:
+        '"{{resolve:oos:aliyun/services/ecs/images/linux/centos-latest/centos_7_9_x64}}"': 'CentOS 7.9'
+        '"{{resolve:oos:aliyun/services/ecs/images/linux/ubuntu-latest/ubuntu_22_04_x64}}"': 'Ubuntu 22.04'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_docker_26}}"': 'Docker 26'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_python_2_7}}"': 'Python 2.7'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_python_3_11}}"': 'Python 3.11'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_java_21}}"': 'Java 21'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_java_17}}"': 'Java 17'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_go_1_22}}"': 'Go 1.22'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_php_7_2}}"': 'Php 7.2'
+        '"{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_nodejs_20}}"': 'Nodejs 20'
+  RunCommand:
+    Type: String
+    Default: |
+      echo "start run command"
+    Label:
+      en: Run Command
+      zh-cn: 运行命令
+    Description:
+      en: The command to install and run the software, which will be executed after the source code or installation package has been pulled to the server locally.
+      zh-cn: 安装并运行软件的命令，该命令将在源代码或安装包被拉取到服务器本地后执行。
+    AssociationProperty: Code
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - '${ArtifactSourceType}'
+            - SourceCode
+  ServicePorts:
+    Type: Json
+    Default:
+      - 80
+    Label:
+      en: Service Ports
+      zh-cn: 服务端口
+    Description:
+      en: The port of the service.
+      zh-cn: 服务端口
+    AssociationProperty: List
+    AssociationPropertyMetadata:
+      Multiple: true
+      Visible:
+        Condition:
+          Fn::Or:
+          - Fn::Equals:
+            - '${ArtifactSourceType}'
+            - SourceCode
+          - Fn::And:
+            - 'Fn::Equals':
+              - '${ArtifactSourceType}'
+              - HelmChart
+            - 'Fn::Equals':
+              - ${OutputType}
+              - ServiceLoadBalancer
+  SecurityGroupPorts:
+    Type: Json
+    Label:
+      en: Security Port
+      zh-cn: 安全组入方向端口
+    Description:
+      en: access service from public IP and ports
+      zh-cn: 可以通过公网IP和端口访问服务
+    AssociationProperty: List
+    AssociationPropertyMetadata:
+      Multiple: true
+      Visible:
+        Condition:
+          Fn::Equals:
+            - '${ArtifactSourceType}'
+            - SourceCode
+    Default:
+      - 80
+    Required: true
+    MinLength: 1
+  CommandTimeout:
+    Type: Number
+    Default: 3600
+    Label:
+      en: CommandTimeout
+      zh-cn: 超时时间
+    Description:
+      en: Run Command Timeout by Second
+      zh-cn: 命令执行超时时间（秒）
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - '${ArtifactSourceType}'
+            - SourceCode
+  ServiceType:
+    Type: String
+    Default: 'private'
+    Label:
+      en: Service Type
+      zh-cn: 服务类型
+    AllowedValues:
+      - 'private'
+      - 'managed'
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        private: "私有化部署"
+        managed: "托管版部署"
+  # Helm Chart相关配置
+  HelmChartPath:
+    Type: String
+    Label:
+      en: Helm Chart package path
+      zh-cn: Helm Chart 包路径
+    Description:
+      en: The path of the repository where the Helm Chart is selected.
+      zh-cn: 选择 Helm Chart 包路径，路径应当为基于源仓库的相对路径。
+    Default: '.'
+    AssociationProperty: ALIYUN::OOS::GitContent::Content
+    AssociationPropertyMetadata:
+      Platform: '{{ Platform }}'
+      Owner: '{{ Owner }}'
+      OrgId: '{{ OrgId }}'
+      RepoFullName: '{{ RepoFullName }}'
+      RepoId: '{{ RepoId }}'
+      Branch: '{{ Branch }}'
+      Path: '{{ Path }}'
+      ContentType: dir
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - HelmChart
+  ChartValues:
+    Type: Json
+    Label:
+      zh-cn: Helm Chart Values
+      en: Helm Chart Values
+    Description:
+      en: When deployed, it will be merged with the Values.yaml configuration. The current configuration has a higher priority. The following deployment parameters can be referenced with ${variable name}. < / br > example： {"replicaCount":"${ReplicaCount}","service":{"type":"LoadBalancer","port":8080}}.
+      zh-cn: 部署时会和Values.yaml中配置合并，当前配置优先级更高，可以用${变量名}引用下面的部署参数。</br>示例：{"replicaCount":"${ReplicaCount}","service":{"type":"LoadBalancer","port":8080}}
+    Default: '{}'
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - HelmChart
+  OutputType:
+    Type: String
+    Label:
+      zh-cn: 服务输出类型
+      en: Output
+    Description:
+      en: The service output type, which determines how to provide the user with access. </br>Service LoadBalancer Access link： To provide the access link corresponding to slb, you need to set the service name and service port. </br> Deployment cluster link： provides the deployment cluster link, users can view the access mode </br>
+      zh-cn: 服务输出类型，决定以哪种方式为用户提供使用方式。</br>Service LoadBalancer访问链接：给出slb对应的访问链接，需要设置服务名称和服务端口。</br>部署集群链接：给出部署集群链接，用户自行查看访问方式</br>
+    AllowedValues:
+      - ServiceLoadBalancer
+      - ClusterUrl
+    Default: ServiceLoadBalancer
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        ServiceLoadBalancer: "Service LoadBalancer访问链接"
+        ClusterUrl: "部署集群链接"
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ArtifactSourceType}'
+            - HelmChart
+  SlbServiceName:
+    Type: String
+    Label:
+      zh-cn: 服务名称
+      en: Service Name
+    Description:
+      en: LoaderBalancer Indicates the name of the service.
+      zh-cn: LoaderBalancer类型的服务名称
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - 'Fn::Equals':
+              - '${ArtifactSourceType}'
+              - HelmChart
+            - 'Fn::Equals':
+              - ${OutputType}
+              - ServiceLoadBalancer
+  CustomParameters:
+    Label:
+      en: user deploy parameters
+      zh-cn: 用户部署参数
+    Description:
+      en: Custom User Deployment Parameters：Passed in by the user during deployment.<br>Docker Compose or Dockerfile Scenario：Environment variable keys in the .env file can be directly specified, with users filling in the actual parameter values during deployment.<br>Source Code Scenario：Parameter names that need to be dynamically passed in by the software running command (script) can be specified, with users filling in the actual parameter values during deployment.<br>For the meaning of front-end controls, please refer to the <a href='https://www.alibabacloud.com/help/en/ros/user-guide/associationproperty-and-associationpropertymetadata' target='_blank'>official documentation</a>.
+      zh-cn: 用户部署参数：由用户部署时传入。</br>DockerCompose场景：可直接指定.env中的环境变量Key，用户部署时填写实际参数值。</br>Dockerfile场景：可指定Docker运行环境变量key。如docker run -e key=value，value为用户部署时填写的实际参数值。</br>源代码场景：可指定软件运行命令（脚本）中需要动态传入的参数名，用户部署时填写实际参数值。</br>前端控件的含义请参考<a href='https://www.alibabacloud.com/help/zh/ros/user-guide/associationproperty-and-associationpropertymetadata' target='_blank'>官网文档</a>。
+    Type: Json
+    Default: ""
+    AssociationProperty: List[Parameters]
+    AssociationPropertyMetadata:
+      Parameters:
+        Label:
+          Label:
+            en: Parameter Label
+            zh-cn: 参数名
+          Type: String
+        Name:
+          Label:
+            en: Environment Variable Key
+            zh-cn: 环境变量名
+          Type: String
+        Type:
+          Label:
+            en: Parameter Type
+            zh-cn: 类型
+          Type: String
+          AllowedValues:
+            - Number
+            - String
+            - Boolean
+            - Json
+        Default:
+          Label:
+            en: Default Value
+            zh-cn: 默认值
+          Type: String
+          Required: false
+          Default: Null
+        AllowedValues:
+          Label:
+            en: Allowed values
+            zh-cn: 可选值
+          Type: Json
+          AssociationProperty: List
+          AssociationPropertyMetadata:
+            Multiple: true
+          Default: Null
+          Required: false
+        AllowedPattern:
+          Label:
+            en: Matching Expressions
+            zh-cn: 匹配表达式
+          Type: String
+          Default: ''
+          Required: false
+          AssociationPropertyMetadata:
+            Visible:
+              Condition:
+                'Fn::Equals':
+                  - '${Type}'
+                  - String
+        ConstraintDescription:
+          Label:
+            en: Matching Expressions Description
+            zh-cn: 匹配表达式描述
+          Type: String
+          Default: ''
+          Required: false
+          AssociationPropertyMetadata:
+            Visible:
+              Condition:
+                'Fn::Equals':
+                  - 'Fn::Length': '${AllowedValues}'
+                  - 0
+        MinValue:
+          Label:
+            en: Min Value
+            zh-cn: 最小值
+          Type: Number
+          Required: false
+          AssociationPropertyMetadata:
+            Visible:
+              Condition:
+                'Fn::Equals':
+                  - '${Type}'
+                  - Number
+        MaxValue:
+          Label:
+            en: Max Value
+            zh-cn: 最大值
+          Type: Number
+          Required: false
+          AssociationPropertyMetadata:
+            Visible:
+              Condition:
+                'Fn::Equals':
+                  - '${Type}'
+                  - Number
+        NoEcho:
+          Label:
+            en: No Echo
+            zh-cn: 是否为密码组件
+          Type: Boolean
+          Default: false
+          AllowedValues:
+            - true
+            - false
+        AssociationProperty:
+          Label:
+            en: Frontend Control
+            zh-cn: 业务组件
+          Type: String
+          Default: Null
+          Required: false
+          AssociationProperty: AssociationProperty
+          AssociationPropertyMetadata:
+            ValueLabelMapping:
+              Code: 代码
+              DateTime: 日期时间
+              FileContent: 文件内容
+              ALIYUN::ECS::Instance::Password: 密码
+          AllowedValues:
+            - FileContent
+            - DateTime
+            - Code
+            - ALIYUN::ECS::Instance::Password
+  # 下面的参数是托管版预设参数
+  RoleName:
+    Type: String
+    Default: ''
+    AssociationProperty: ALIYUN::RAM::Service::Role
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          'Fn::Equals':
+            - '${ServiceType}'
+            - managed
+      Service: supplier.computenest.aliyuncs.com
+      APIProduct: resourcegroup
+      IsServiceLinedRole: false
+    Description: 请前往RAM控制台创建角色，角色需拥有上述模板定义的资源所需的创建权限。<a href='https://help.aliyun.com/zh/compute-nest/create-a-compute-nest-ram-role-and-grant-permissions-to-the-role' target='_blank'><b> 查看文档</b><font color='blue'></a>
+  ZoneId:
+    Type: String
+    Default: ''
+    Label:
+      en: VSwitch Available Zone
+      zh-cn: 可用区
+    AssociationProperty: ALIYUN::VPC::Zone::ZoneId
+    AssociationPropertyMetadata:
+      RegionId: ALIYUN::Region
+      Visible:
+        Condition:
+          Fn::And:
+            - 'Fn::Equals':
+              - '${ServiceType}'
+              - managed
+            - Fn::Not:
+                Fn::Equals:
+                  - '${ArtifactSourceType}'
+                  - HelmChart
+  VpcId:
+    Type: String
+    Default: ''
+    Label:
+      en: VPC ID
+      zh-cn: 专有网络VPC实例ID
+    AssociationProperty: ALIYUN::ECS::VPC::VPCId
+    AssociationPropertyMetadata:
+      RegionId: ALIYUN::Region
+      Visible:
+        Condition:
+          Fn::And:
+            - 'Fn::Equals':
+              - '${ServiceType}'
+              - managed
+            - Fn::Not:
+                Fn::Equals:
+                  - '${ArtifactSourceType}'
+                  - HelmChart
+  VSwitchId:
+    Type: String
+    Default: ''
+    Label:
+      en: VSwitch ID
+      zh-cn: 交换机实例ID
+    AssociationProperty: ALIYUN::VPC::VSwitch::VSwitchId
+    AssociationPropertyMetadata:
+      RegionId: ALIYUN::Region
+      VpcId: ${VpcId}
+      ZoneId: ${ZoneId}
+      Visible:
+        Condition:
+          Fn::And:
+            - 'Fn::Equals':
+              - '${ServiceType}'
+              - managed
+            - Fn::Not:
+                Fn::Equals:
+                  - '${ArtifactSourceType}'
+                  - HelmChart
+  ClusterId:
+    Type: String
+    Description:
+      en: The ID of Kubernetes ClusterId in which application deployed.
+      zh-cn: 部署应用程序的容器集群ID
+    AllowedPattern: '[0-9a-z]+$'
+    Required: true
+    Default: null
+    Label:
+      en: Kubernetes ClusterId
+      zh-cn: 容器集群ID
+    AssociationProperty: 'ALIYUN::CS::Cluster::ClusterId'
+    AssociationPropertyMetadata:
+      RegionId: '${RegionId}'
+      Visible:
+        Condition:
+          Fn::And:
+            - 'Fn::Equals':
+              - '${ArtifactSourceType}'
+              - HelmChart
+            - 'Fn::Equals':
+              - ${ServiceType}
+              - managed
+  AdvancedOptions:
+    Type: Boolean
+    Default: false
+    Label:
+      en: Advanced Options
+      zh-cn: 高级选项
+    Description:
+      en: Advanced options for docker compose or dockerfile.
+      zh-cn: 镜像构建高级选项。如指定构建镜像构建参数
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - '${ArtifactSourceType}'
+            - Dockerfile
+  DockerBuildArgs:
+    Default: '{}'
+    Label:
+      en: Customized docker build parameters
+      zh-cn: Docker镜像构建参数
+    Description:
+      en: Custom image build parameters that will replace the ARG in the Dockerfile during the image build process.
+      zh-cn: 自定义的Docker镜像构建参数。如果你的 Dockerfile 使用了<a href="https://docs.docker.com/build/building/multi-stage/" target='_blank'>多阶段 (multi-stage)</a> 特性 </br>并且需在构建镜像前就设置环境变量，你可以在此处添加构建参数名和参数值 来设置。
+    Type: Json
+    AssociationProperty: List[Parameters]
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::And:
+            - Fn::Equals:
+                - '${AdvancedOptions}'
+                - true
+            - Fn::Equals:
+                - '${ArtifactSourceType}'
+                - Dockerfile
+      Parameters:
+        ArgumentName:
+          Label:
+            en: English Parameter Name
+            zh-cn: 镜像构建参数名
+          Type: String
+        ArgumentValue:
+          Description:
+            en: The value corresponding to the image build parameter name.
+            zn-cn: 镜像构建参数值
+          Label:
+            en: build parameter value
+            zh-cn: 镜像构建参数值
+          Type: String
+Metadata:
+  ALIYUN::ROS::Interface:
+    ParameterGroups:
+      - Parameters:
+          - ServiceType
+          - ServiceBuildRegion
+        Label:
+          default: 部署配置
+      - Parameters:
+          - ArtifactSourceType
+          - SourceCodePath
+          - PackagePath
+          - DockerComposeYamlPath
+          - DockerComposeEnvPath
+          - DockerFilePath
+          - HelmChartPath
+          - ChartValues
+          - CustomParameters
+          - OutputType
+          - SlbServiceName
+          - RunCommand
+          - ImageId
+          - ServicePorts
+          - SecurityGroupPorts
+          - CommandTimeout
+          - AdvancedOptions
+          - DockerBuildArgs
+        Label:
+          default: 环境配置
+      - Parameters:
+          - RoleName
+          - ZoneId
+          - VpcId
+          - VSwitchId
+          - ClusterId
+        Label:
+          default: 预设参数配置
